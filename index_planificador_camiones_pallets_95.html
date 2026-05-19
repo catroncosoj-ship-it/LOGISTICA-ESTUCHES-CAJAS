@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Planificador Camiones & Pallets | Estuches</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --bg:#f4f7fb; --panel:#ffffff; --ink:#132033; --muted:#667085; --line:#e5e7eb;
+      --blue:#123c69; --blue2:#0f5ea8; --green:#12b76a; --amber:#f79009; --red:#f04438;
+      --softblue:#eaf3ff; --softgreen:#e9f8f0; --softamber:#fff4e5; --softred:#fff1f0;
+      --shadow:0 18px 45px rgba(16,24,40,.10); --radius:22px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(135deg,#eef5ff 0%,#f8fafc 42%,#eef9f4 100%);color:var(--ink)}
+    .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+    aside{background:linear-gradient(180deg,#0b2948,#123c69);color:white;padding:26px 20px;position:sticky;top:0;height:100vh;overflow:auto}
+    .brand{display:flex;gap:12px;align-items:center;margin-bottom:28px}
+    .logo{width:44px;height:44px;border-radius:14px;background:white;color:#123c69;display:grid;place-items:center;font-weight:900;box-shadow:0 12px 30px rgba(0,0,0,.18)}
+    .brand h1{font-size:18px;line-height:1.1;margin:0}
+    .brand small{opacity:.75}
+    .nav{display:grid;gap:10px;margin-top:14px}
+    .nav a{color:white;text-decoration:none;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.07);font-weight:650;font-size:14px}
+    .nav a:hover{background:rgba(255,255,255,.15)}
+    .sidebox{margin-top:22px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.13);border-radius:18px;padding:15px;font-size:13px;line-height:1.45}
+    main{padding:26px;overflow:auto}
+    .hero{background:linear-gradient(135deg,#123c69,#0f5ea8 55%,#12b76a);border-radius:28px;color:white;padding:28px;box-shadow:var(--shadow);display:flex;justify-content:space-between;gap:20px;align-items:center}
+    .hero h2{font-size:30px;margin:0 0 6px}
+    .hero p{margin:0;opacity:.9}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:9px 12px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.23);font-weight:700;margin-top:12px}
+    .toolbar{display:grid;grid-template-columns:1.2fr 1fr 1fr auto auto;gap:12px;margin:18px 0}
+    .control,.btn{border:none;border-radius:16px;padding:14px 15px;font:inherit;box-shadow:0 8px 20px rgba(16,24,40,.06)}
+    .control{background:white;border:1px solid var(--line)}
+    .btn{cursor:pointer;font-weight:800;color:white;background:var(--blue2)}
+    .btn.secondary{background:#344054}
+    .btn.green{background:var(--green)}
+    .btn.amber{background:var(--amber)}
+    .cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin:18px 0}
+    .card{background:white;border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:0 12px 30px rgba(16,24,40,.06)}
+    .card .label{font-size:12px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+    .card .value{font-size:28px;font-weight:900;margin-top:8px}
+    .card .note{font-size:13px;color:var(--muted);margin-top:4px}
+    section{background:white;border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin:18px 0;box-shadow:0 12px 30px rgba(16,24,40,.06)}
+    .section-title{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}
+    h3{margin:0;font-size:20px}
+    table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border-radius:16px;border:1px solid var(--line)}
+    th{background:#f8fafc;color:#344054;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:12px;border-bottom:1px solid var(--line)}
+    td{padding:11px 12px;border-bottom:1px solid #f0f2f5;font-size:14px;vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    td input{width:100%;border:1px solid #d0d5dd;border-radius:10px;padding:8px}
+    .product-name{font-weight:850;color:#101828}
+    .product-sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800}
+    .ok{background:var(--softgreen);color:#027a48}.warn{background:var(--softamber);color:#b54708}.bad{background:var(--softred);color:#b42318}.info{background:var(--softblue);color:#175cd3}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .month-block{border:1px solid var(--line);border-radius:20px;padding:16px;background:#fbfdff;margin-bottom:14px}
+    .month-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .truck-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(275px,1fr));gap:12px}
+    .truck{background:white;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 8px 20px rgba(16,24,40,.05)}
+    .truck-top{padding:13px 14px;background:linear-gradient(90deg,#f8fafc,#eef5ff);display:flex;justify-content:space-between;font-weight:900}
+    .pallet-bar{display:grid;grid-template-columns:repeat(14,1fr);gap:3px;padding:12px 14px}
+    .slot{height:18px;border-radius:5px;background:#e4e7ec}
+    .slot.full{background:#12b76a}
+    .slot.partial{background:#f79009}
+    .truck-list{padding:0 14px 14px}
+    .truck-item{display:flex;justify-content:space-between;gap:10px;border-top:1px solid #f2f4f7;padding:9px 0;font-size:13px}
+    .truck-item b{font-size:13px}
+    .alert-list{display:grid;gap:10px}
+    .alert{padding:12px 14px;border-radius:16px;font-weight:750;border:1px solid var(--line)}
+    .chart-wrap{height:310px}
+    .small{font-size:12px;color:var(--muted)}
+    @media(max-width:1050px){.app{grid-template-columns:1fr}aside{position:relative;height:auto}.toolbar,.cards,.grid2{grid-template-columns:1fr}.hero{display:block}}
+    @media print{aside,.toolbar,.no-print{display:none!important}.app{display:block}main{padding:0}.hero,section,.card{box-shadow:none}body{background:white}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand">
+      <div class="logo">MV</div>
+      <div><h1>Planificador<br>Camiones & Pallets</h1><small>Estuches / abastecimiento</small></div>
+    </div>
+    <div class="nav">
+      <a href="#resumen">Resumen ejecutivo</a>
+      <a href="#camiones">Qué trae cada camión</a>
+      <a href="#detalle">Base editable</a>
+      <a href="#alertas">Alertas</a>
+    </div>
+    <div class="sidebox">
+      <b>Reglas del cálculo</b><br>
+      4.800 estuches = 1 pallet<br>
+      14 pallets = 1 camión máximo<br>
+      Lead time: 30 días fabricación + entrega
+    </div>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <div>
+        <h2>Dashboard logístico de estuches</h2>
+        <p>Carga tu planilla, agrega o modifica cantidades y calcula automáticamente pallets, camiones y fechas de pedido.</p>
+        <div class="pill">🚛 Visual por camión y por mes</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;opacity:.85">Estado</div>
+        <div id="statusHero" style="font-size:22px;font-weight:900">Listo para cargar</div>
+      </div>
+    </div>
+
+    <div class="toolbar no-print">
+      <input class="control" type="file" id="fileInput" accept=".xlsx,.xls,.csv"/>
+      <select class="control" id="monthFilter"><option value="TODOS">Todos los meses</option></select>
+      <input class="control" id="searchInput" placeholder="Buscar código, estuche o proveedor..."/>
+      <button class="btn green" onclick="applyData()">Aplicar</button>
+      <button class="btn secondary" onclick="window.print()">Exportar PDF</button>
+    </div>
+
+    <div class="cards" id="resumen">
+      <div class="card"><div class="label">Estuches totales</div><div class="value" id="kpiEstuches">0</div><div class="note">Según filtro actual</div></div>
+      <div class="card"><div class="label">Pallets totales</div><div class="value" id="kpiPallets">0</div><div class="note">4800 estuches por pallet</div></div>
+      <div class="card"><div class="label">Camiones</div><div class="value" id="kpiCamiones">0</div><div class="note">14 pallets por camión</div></div>
+      <div class="card"><div class="label">Ocupación promedio</div><div class="value" id="kpiOcupacion">0%</div><div class="note">Uso de capacidad camionera</div></div>
+      <div class="card"><div class="label">Pallets libres</div><div class="value" id="kpiLibres">0</div><div class="note">Capacidad disponible</div></div>
+    </div>
+
+    <div class="grid2">
+      <section>
+        <div class="section-title"><h3>📊 Pallets por mes</h3><span class="badge info">Vista gerencial</span></div>
+        <div class="chart-wrap"><canvas id="chartPallets"></canvas></div>
+      </section>
+      <section id="alertas">
+        <div class="section-title"><h3>⚠️ Alertas de planificación</h3><span class="badge warn">Automático</span></div>
+        <div id="alerts" class="alert-list"></div>
+      </section>
+    </div>
+
+    <section>
+      <div class="section-title"><h3>📅 Calendario de pedidos y entregas</h3><span class="small">Fecha máxima de pedido = mes de entrega menos 30 días</span></div>
+      <div id="calendarTable"></div>
+    </section>
+
+    <section id="camiones">
+      <div class="section-title"><h3>🚛 Qué trae cada camión por mes</h3><span class="badge ok">Máx. 14 pallets</span></div>
+      <div id="truckPlan"></div>
+    </section>
+
+    <section id="detalle">
+      <div class="section-title">
+        <h3>📝 Base editable de estuches</h3>
+        <div class="no-print">
+          <button class="btn amber" onclick="addRow()">Agregar producto</button>
+          <button class="btn secondary" onclick="saveLocal()">Guardar en navegador</button>
+          <button class="btn secondary" onclick="clearLocal()">Limpiar guardado</button>
+        </div>
+      </div>
+      <div style="overflow:auto"><table id="dataTable"></table></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const PALLET_SIZE = 4800;
+const TRUCK_CAP = 14;
+const LEAD_DAYS = 30;
+const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+let headers = ["Código material","Descripción de material","Proveedor","Área","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+let rows = [
+  {"Código material":"15009147","Descripción de material":"ESTUCHE C&CO PIZZA 4 QUESOS 650 G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":0,"Junio":0,"Julio":4800,"Agosto":0,"Septiembre":9600,"Octubre":0,"Noviembre":0,"Diciembre":0},
+  {"Código material":"15009224","Descripción de material":"ESTUCHE LC PIZZA JAMON/MOZZARELLA 470 G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":24000,"Junio":28800,"Julio":14400,"Agosto":14400,"Septiembre":33600,"Octubre":14400,"Noviembre":24000,"Diciembre":19200}
+];
+let chart;
+
+function cleanName(name){
+  if(!name) return "";
+  let s = String(name).trim().replace(/\s+/g," ");
+  s = s.replace(/^ESTUCHE\s+/i,"");
+  s = s.replace(/\bPIZZA\b/ig,"Pizza");
+  s = s.replace(/\bC&CO\b/ig,"C&CO").replace(/\bLC\b/g,"Líder").replace(/\bMV\b/g,"Minuto Verde");
+  s = s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  s = s.replace("C&co","C&CO").replace("Líder","Líder").replace("Minuto Verde","Minuto Verde");
+  return s;
+}
+function num(v){ if(v===null||v===undefined||v==="") return 0; return Number(String(v).replace(/\./g,"").replace(",","."))||0; }
+function fmt(n){ return Math.round(n).toLocaleString("es-CL"); }
+function monthCols(){ return headers.filter(h => MONTHS.includes(h)); }
+
+function initMonthFilter(){
+  const sel=document.getElementById("monthFilter");
+  const current=sel.value;
+  sel.innerHTML='<option value="TODOS">Todos los meses</option>'+monthCols().map(m=>`<option value="${m}">${m}</option>`).join("");
+  if([...sel.options].some(o=>o.value===current)) sel.value=current;
+}
+function renderTable(){
+  initMonthFilter();
+  const tbl=document.getElementById("dataTable");
+  tbl.innerHTML = `<thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}<th class="no-print">Acción</th></tr></thead><tbody>`+
+    rows.map((r,i)=>`<tr>${headers.map(h=>{
+      const val = r[h] ?? "";
+      const cls = MONTHS.includes(h) ? 'type="number" min="0" step="1"' : 'type="text"';
+      const display = (h==="Descripción de material") ? cleanName(val) : val;
+      return `<td><input ${cls} value="${String(display).replace(/"/g,'&quot;')}" onchange="updateCell(${i}, '${h.replace(/'/g,"\\'")}', this.value)"></td>`;
+    }).join("")}<td class="no-print"><button class="btn secondary" onclick="deleteRow(${i})">Eliminar</button></td></tr>`).join("")+
+    `</tbody>`;
+}
+function updateCell(i,h,v){
+  if(h==="Descripción de material"){ rows[i][h]=v.toUpperCase().startsWith("ESTUCHE")?v:"ESTUCHE "+v; }
+  else rows[i][h]=MONTHS.includes(h)?num(v):v;
+}
+function addRow(){
+  const r={}; headers.forEach(h=>r[h]=MONTHS.includes(h)?0:"");
+  r["Código material"]=""; r["Descripción de material"]="ESTUCHE NUEVO"; r["Proveedor"]=""; r["Área"]="ADQ";
+  rows.push(r); renderTable(); applyData();
+}
+function deleteRow(i){ rows.splice(i,1); renderTable(); applyData(); }
+function saveLocal(){ localStorage.setItem("planificador_estuches_rows", JSON.stringify({headers,rows})); alert("Guardado en este navegador."); }
+function clearLocal(){ localStorage.removeItem("planificador_estuches_rows"); alert("Guardado eliminado."); }
+
+document.getElementById("fileInput").addEventListener("change", e=>{
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const wb=XLSX.read(ev.target.result,{type:"array"});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const json=XLSX.utils.sheet_to_json(ws,{defval:0});
+    if(!json.length){ alert("La planilla no tiene datos."); return; }
+    headers=Object.keys(json[0]).map(h=>String(h).trim());
+    rows=json.map(o=>{
+      const r={}; headers.forEach(h=>r[h]=o[h]??0);
+      return r;
+    });
+    renderTable(); applyData();
+    document.getElementById("statusHero").innerText="Archivo cargado";
+  };
+  reader.readAsArrayBuffer(file);
+});
+document.getElementById("monthFilter").addEventListener("change", applyData);
+document.getElementById("searchInput").addEventListener("input", applyData);
+
+function filteredRows(){
+  const q=document.getElementById("searchInput").value.toLowerCase().trim();
+  if(!q) return rows;
+  return rows.filter(r => headers.some(h => String(r[h]??"").toLowerCase().includes(q)));
+}
+function calc(){
+  const months = document.getElementById("monthFilter").value==="TODOS" ? monthCols() : [document.getElementById("monthFilter").value];
+  const data = filteredRows();
+  const byMonth = {};
+  months.forEach(m=>{
+    const items = data.map(r=>{
+      const est=num(r[m]);
+      const pallets=est>0 ? Math.ceil(est/PALLET_SIZE) : 0;
+      return {code:r["Código material"]??r["Codigo material"]??"", rawName:r["Descripción de material"]??r["Descripcion de material"]??"", name:cleanName(r["Descripción de material"]??r["Descripcion de material"]??""), proveedor:r["Proveedor"]??"", est, pallets};
+    }).filter(x=>x.est>0);
+    const estuches=items.reduce((a,b)=>a+b.est,0);
+    const pallets=items.reduce((a,b)=>a+b.pallets,0);
+    const trucks=Math.ceil(pallets/TRUCK_CAP);
+    byMonth[m]={items, estuches, pallets, trucks, libres:trucks*TRUCK_CAP-pallets};
+  });
+  return byMonth;
+}
+function buildTrucks(items){
+  const trucks=[]; let current={n:1, used:0, items:[]};
+  items.forEach(item=>{
+    let remaining=item.pallets;
+    while(remaining>0){
+      const space=TRUCK_CAP-current.used;
+      if(space===0){ trucks.push(current); current={n:trucks.length+1, used:0, items:[]}; continue; }
+      const take=Math.min(space, remaining);
+      current.items.push({...item, palletsAsignados:take, estAsignados: Math.min(item.est, take*PALLET_SIZE)});
+      current.used += take; remaining -= take;
+      if(current.used===TRUCK_CAP){ trucks.push(current); current={n:trucks.length+1, used:0, items:[]}; }
+    }
+  });
+  if(current.used>0 || trucks.length===0) trucks.push(current);
+  return trucks;
+}
+function orderDate(monthName){
+  const monthIndex=MONTHS.indexOf(monthName);
+  const year = new Date().getFullYear();
+  const delivery = new Date(year, monthIndex, 1);
+  const order = new Date(delivery); order.setDate(order.getDate()-LEAD_DAYS);
+  return {delivery, order};
+}
+function applyData(){
+  const byMonth=calc();
+  const totals=Object.values(byMonth).reduce((a,m)=>({est:a.est+m.estuches,pal:a.pal+m.pallets,tr:a.tr+m.trucks,lib:a.lib+m.libres}),{est:0,pal:0,tr:0,lib:0});
+  document.getElementById("kpiEstuches").innerText=fmt(totals.est);
+  document.getElementById("kpiPallets").innerText=fmt(totals.pal);
+  document.getElementById("kpiCamiones").innerText=fmt(totals.tr);
+  document.getElementById("kpiLibres").innerText=fmt(totals.lib);
+  document.getElementById("kpiOcupacion").innerText= totals.tr? Math.round((totals.pal/(totals.tr*TRUCK_CAP))*100)+"%" : "0%";
+  renderChart(byMonth); renderCalendar(byMonth); renderTrucks(byMonth); renderAlerts(byMonth);
+}
+function renderChart(byMonth){
+  const labels=Object.keys(byMonth), vals=labels.map(m=>byMonth[m].pallets);
+  if(chart) chart.destroy();
+  chart=new Chart(document.getElementById("chartPallets"),{type:"bar",data:{labels,datasets:[{label:"Pallets",data:vals,borderRadius:12}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+}
+function renderCalendar(byMonth){
+  const rowsHtml=Object.entries(byMonth).map(([m,d])=>{
+    const {delivery,order}=orderDate(m);
+    const status = d.pallets===0 ? '<span class="badge info">Sin necesidad</span>' : (d.libres>=7 ? '<span class="badge warn">Camión bajo uso</span>' : '<span class="badge ok">Plan normal</span>');
+    return `<tr><td><b>${m}</b></td><td>${fmt(d.estuches)}</td><td>${fmt(d.pallets)}</td><td>${fmt(d.trucks)}</td><td>${order.toLocaleDateString("es-CL")}</td><td>${delivery.toLocaleDateString("es-CL")}</td><td>${status}</td></tr>`;
+  }).join("");
+  document.getElementById("calendarTable").innerHTML=`<table><thead><tr><th>Mes entrega</th><th>Estuches</th><th>Pallets</th><th>Camiones</th><th>Fecha máx. pedido</th><th>Entrega estimada</th><th>Estado</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+}
+function renderTrucks(byMonth){
+  document.getElementById("truckPlan").innerHTML=Object.entries(byMonth).map(([m,d])=>{
+    const trucks=buildTrucks(d.items);
+    return `<div class="month-block"><div class="month-head"><h3>${m}</h3><span class="badge info">${fmt(d.pallets)} pallets / ${fmt(d.trucks)} camiones</span></div><div class="truck-grid">`+
+      trucks.map(t=>`<div class="truck"><div class="truck-top"><span>Camión ${t.n}</span><span>${t.used}/${TRUCK_CAP} pallets</span></div>
+      <div class="pallet-bar">${Array.from({length:TRUCK_CAP}).map((_,i)=>`<div class="slot ${i<t.used?'full':''}"></div>`).join("")}</div>
+      <div class="truck-list">${t.items.length?t.items.map(it=>`<div class="truck-item"><div><b>${it.name}</b><div class="small">Código ${it.code} · ${it.proveedor}</div></div><div><b>${it.palletsAsignados}</b> pallets<br><span class="small">${fmt(it.estAsignados)} est.</span></div></div>`).join(""):'<div class="small">Sin carga</div>'}</div></div>`).join("")+
+      `</div></div>`;
+  }).join("");
+}
+function renderAlerts(byMonth){
+  const alerts=[];
+  Object.entries(byMonth).forEach(([m,d])=>{
+    if(d.pallets===0) alerts.push(`<div class="alert" style="background:var(--softblue)">ℹ️ ${m}: no registra necesidad de estuches.</div>`);
+    if(d.trucks>0 && d.libres>=7) alerts.push(`<div class="alert" style="background:var(--softamber)">⚠️ ${m}: queda un camión con baja ocupación (${d.libres} pallets libres). Evaluar consolidar entrega.</div>`);
+    if(d.pallets>0) {
+      const {order}=orderDate(m); const today=new Date(); today.setHours(0,0,0,0);
+      if(order < today) alerts.push(`<div class="alert" style="background:var(--softred)">🚨 ${m}: la fecha máxima de pedido ya pasó (${order.toLocaleDateString("es-CL")}). Riesgo de atraso por lead time de 30 días.</div>`);
+    }
+  });
+  if(!alerts.length) alerts.push(`<div class="alert" style="background:var(--softgreen)">✅ Sin alertas críticas con el filtro actual.</div>`);
+  document.getElementById("alerts").innerHTML=alerts.join("");
+}
+(function start(){
+  const saved=localStorage.getItem("planificador_estuches_rows");
+  if(saved){ try{ const o=JSON.parse(saved); headers=o.headers; rows=o.rows; document.getElementById("statusHero").innerText="Datos guardados cargados"; }catch(e){} }
+  renderTable(); applyData();
+})();
+</script>
+</body>
+</html>
