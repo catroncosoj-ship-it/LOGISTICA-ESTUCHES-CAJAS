@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Planificador Logístico — Vista Gerencial</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --ink:#0c1929; --ink2:#1e2d3d; --bg:#eef2f7; --panel:#fff;
+  --border:#dde4ed; --muted:#6b7f96; --faint:#f4f7fb;
+  --teal:#0c7b5e; --teal2:#0fa882; --teal-soft:#e0f5ee; --teal-border:#a7dfc7;
+  --amber:#c2790b; --amber-soft:#fef3c7; --amber-border:#fcd34d;
+  --red:#c0392b; --red-soft:#fee2e2; --red-border:#fca5a5;
+  --blue:#1e4fc2; --blue-soft:#eff6ff; --blue-border:#bfdbfe;
+  --purple:#5a3bbf; --purple-soft:#f0edff;
+  --gold:#b45309;
+  --r:16px; --shadow:0 2px 12px rgba(12,25,41,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+mono{font-family:'JetBrains Mono',monospace}
+
+/* ─── LAYOUT ─── */
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+
+/* ─── SIDEBAR ─── */
+.sidebar{
+  background:linear-gradient(175deg,#071220 0%,#0c2a1f 60%,#071810 100%);
+  color:#fff;padding:28px 16px;position:sticky;top:0;height:100vh;
+  overflow-y:auto;display:flex;flex-direction:column;gap:4px;
+}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:28px;padding-bottom:22px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand-mark{width:42px;height:42px;background:linear-gradient(135deg,#0c7b5e,#0fa882);border-radius:13px;display:grid;place-items:center;font-size:20px;flex-shrink:0}
+.brand h1{font-size:13.5px;font-weight:800;line-height:1.3;color:#fff}
+.brand small{font-size:11px;color:rgba(255,255,255,.45);display:block;margin-top:2px}
+
+.nav-section{font-size:10px;font-weight:800;letter-spacing:.12em;color:rgba(255,255,255,.3);text-transform:uppercase;padding:14px 10px 6px}
+.nav-btn{width:100%;text-align:left;background:none;border:none;color:rgba(255,255,255,.65);font:600 13.5px 'Plus Jakarta Sans',sans-serif;padding:10px 12px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .18s}
+.nav-btn:hover,.nav-btn.on{background:rgba(255,255,255,.1);color:#fff}
+.nav-btn .ni{font-size:15px;width:18px;text-align:center;opacity:.8}
+.sidebar-card{margin-top:auto;background:rgba(12,123,94,.2);border:1px solid rgba(15,168,130,.25);border-radius:13px;padding:14px;font-size:12px;line-height:1.8;color:rgba(255,255,255,.7)}
+.sidebar-card b{color:#4ddbb6;display:block;margin-bottom:5px;font-size:13px}
+
+/* ─── MAIN ─── */
+.main{padding:0;overflow-x:hidden}
+
+/* ─── STICKY TOP BAR ─── */
+.topbar{
+  position:sticky;top:0;z-index:20;
+  background:rgba(238,242,247,.94);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+  padding:12px 28px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+}
+.topbar select,.topbar input[type=text]{
+  border:1px solid var(--border);border-radius:10px;padding:9px 12px;
+  font:500 13.5px 'Plus Jakarta Sans',sans-serif;background:#fff;color:var(--ink);
+  transition:border .15s;
+}
+.topbar select:focus,.topbar input[type=text]:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(12,123,94,.1)}
+.btn{border:none;border-radius:10px;padding:9px 15px;font:700 13px 'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.btn-pri{background:var(--teal);color:#fff}
+.btn-pri:hover{background:var(--teal2);transform:translateY(-1px)}
+.btn-sec{background:#fff;color:var(--ink);border:1px solid var(--border)}
+.btn-sec:hover{background:var(--faint)}
+.btn-amber{background:var(--amber-soft);color:var(--gold);border:1px solid var(--amber-border)}
+.file-wrap{position:relative;overflow:hidden}
+.file-wrap input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.ml-a{margin-left:auto}
+
+/* ─── HERO BANNER ─── */
+.hero{
+  background:linear-gradient(135deg,#071220 0%,#0c2a1f 55%,#0c3d2a 100%);
+  padding:32px 28px 28px;color:#fff;
+}
+.hero-grid{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start}
+.hero-title{font-size:27px;font-weight:900;line-height:1.1;letter-spacing:-.3px}
+.hero-sub{font-size:14px;color:rgba(255,255,255,.55);margin-top:6px;font-weight:500}
+.hero-pills{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.hpill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;color:rgba(255,255,255,.85)}
+.hero-stat-box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px 20px;text-align:right;min-width:160px}
+.hero-stat-label{font-size:11px;color:rgba(255,255,255,.5);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.hero-stat-val{font-size:32px;font-weight:900;margin-top:4px;color:#fff}
+.hero-stat-note{font-size:12px;color:rgba(255,255,255,.45);margin-top:3px}
+
+/* ─── CONTENT AREA ─── */
+.content{padding:24px 28px}
+
+/* ─── KPI STRIP ─── */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow)}
+.kpi .lbl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.kpi .val{font-size:26px;font-weight:900;margin-top:6px;line-height:1}
+.kpi .note{font-size:12px;color:var(--muted);margin-top:5px}
+.kpi.accent{background:linear-gradient(135deg,#071220,#0c2a1f);color:#fff;border-color:transparent}
+.kpi.accent .lbl,.kpi.accent .note{color:rgba(255,255,255,.5)}
+.kpi .trend{display:inline-block;font-size:11px;font-weight:700;margin-top:4px;padding:3px 8px;border-radius:999px}
+.trend-up{background:#d1fae5;color:#065f46}
+.trend-dn{background:#fee2e2;color:#991b1b}
+.trend-ok{background:#e0f5ee;color:#065f46}
+
+/* ─── 2-COL GRID ─── */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:20px}
+.span2{grid-column:1/-1}
+
+/* ─── SECTION CARD ─── */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:20px 22px;box-shadow:var(--shadow)}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.card-title{font-size:16px;font-weight:800}
+.card-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+
+/* ─── CHART ─── */
+.chart-wrap{position:relative;height:240px}
+.chart-wrap-lg{position:relative;height:280px}
+.chart-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px}
+.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* ─── CALENDAR TABLE ─── */
+.tbl-wrap{overflow:auto;border-radius:12px;border:1px solid var(--border)}
+table.main-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.main-tbl thead th{background:#f8fafb;color:#4a5568;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0}
+.main-tbl tbody td{padding:10px 12px;border-bottom:1px solid #f0f4f7;vertical-align:middle}
+.main-tbl tbody tr:last-child td{border-bottom:none}
+.main-tbl tbody tr:hover{background:#fafcfe}
+.n{text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px}
+.row-ok td:first-child{border-left:3px solid #0fa882}
+.row-warn td:first-child{border-left:3px solid #f59e0b}
+.row-late td:first-child{border-left:3px solid #e74c3c}
+.row-none td:first-child{border-left:3px solid #cbd5e1}
+
+/* ─── GANTT ─── */
+.gantt-wrap{overflow-x:auto;padding-bottom:4px}
+.gantt-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)}
+.gantt-row:last-child{border-bottom:none}
+.gantt-label{font-size:13px;font-weight:700;width:110px;flex-shrink:0}
+.gantt-track{flex:1;height:28px;background:#f0f4f7;border-radius:6px;position:relative;overflow:hidden}
+.gantt-bar{position:absolute;height:100%;border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;color:#fff}
+.gantt-meta{font-size:12px;color:var(--muted);width:110px;flex-shrink:0;text-align:right;font-family:'JetBrains Mono',monospace}
+
+/* ─── BADGE ─── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:800}
+.b-ok{background:var(--teal-soft);color:var(--teal)}
+.b-warn{background:var(--amber-soft);color:var(--gold)}
+.b-red{background:var(--red-soft);color:var(--red)}
+.b-blue{background:var(--blue-soft);color:var(--blue)}
+.b-gray{background:#f1f5f9;color:var(--muted)}
+.b-purple{background:var(--purple-soft);color:var(--purple)}
+
+/* ─── TRUCKS ─── */
+.truck-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.truck{border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.truck-hd{padding:12px 14px;background:linear-gradient(90deg,#071220,#0c2a1f);color:#fff;display:flex;justify-content:space-between;align-items:center}
+.truck-hd.full{background:linear-gradient(90deg,#7f1d1d,#c0392b)}
+.truck-hd.low{background:linear-gradient(90deg,#78350f,#c2790b)}
+.truck-name{font-weight:900;font-size:14px}
+.truck-cap{font-size:12px;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:999px;font-weight:700}
+.pbar{display:grid;grid-template-columns:repeat(14,1fr);gap:3px;padding:10px 12px;background:#f8fafc}
+.ps{height:12px;border-radius:3px;background:#e2e8f0}
+.ps.u{background:linear-gradient(135deg,#0c7b5e,#0fa882)}
+.truck-body{padding:10px 12px 12px}
+.ti{padding:8px 10px;background:var(--faint);border-radius:9px;margin-bottom:7px;border-left:3px solid var(--teal)}
+.ti:last-child{margin-bottom:0}
+.ti strong{font-size:13px;font-weight:700;display:block;line-height:1.3}
+.ti span{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+
+/* ─── MONTH BLOCK ─── */
+.mblock{border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--faint);margin-bottom:16px}
+.mblock:last-child{margin-bottom:0}
+.mblock-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.mblock-hd h4{font-size:18px;font-weight:900}
+
+/* ─── ALERTS ─── */
+.alert{padding:14px 16px;border-radius:13px;font-size:13.5px;font-weight:600;margin-bottom:10px;border:1px solid transparent;display:flex;gap:12px;align-items:flex-start;line-height:1.5}
+.alert:last-child{margin-bottom:0}
+.alert-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.a-red{background:var(--red-soft);border-color:var(--red-border)}
+.a-warn{background:var(--amber-soft);border-color:var(--amber-border)}
+.a-info{background:var(--blue-soft);border-color:var(--blue-border)}
+.a-ok{background:var(--teal-soft);border-color:var(--teal-border)}
+
+/* ─── INSIGHT BOX ─── */
+.insight-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.insight{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px}
+.insight .i-icon{font-size:22px}
+.insight .i-title{font-size:13px;font-weight:800;color:var(--ink)}
+.insight .i-desc{font-size:12.5px;color:var(--muted);line-height:1.5}
+
+/* ─── PRODUCTOS TABLE ─── */
+.td-edit{border:1px solid var(--border);border-radius:7px;padding:6px 8px;font:500 13px 'Plus Jakarta Sans',sans-serif;background:#fafafa;width:100%;transition:all .15s}
+.td-edit:focus{outline:none;border-color:var(--teal);background:#fff;box-shadow:0 0 0 3px rgba(12,123,94,.1)}
+.num-edit{text-align:right;font-family:'JetBrains Mono',monospace;width:90px}
+.del-btn{border:none;background:none;cursor:pointer;padding:5px 8px;border-radius:7px;color:var(--muted);font-size:14px;transition:all .15s}
+.del-btn:hover{background:var(--red-soft);color:var(--red)}
+
+/* ─── CAPACITY BAR ─── */
+.cap-bar{height:8px;background:#e9ecef;border-radius:999px;overflow:hidden;margin-top:6px}
+.cap-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#0c7b5e,#0fa882);transition:width .4s}
+.cap-fill.warn{background:linear-gradient(90deg,#c2790b,#f59e0b)}
+.cap-fill.red{background:linear-gradient(90deg,#c0392b,#e74c3c)}
+
+/* ─── TABS ─── */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tab{border:1px solid var(--border);background:var(--bg);color:var(--muted);padding:7px 13px;border-radius:999px;font:700 12.5px 'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all .18s}
+.tab:hover{border-color:var(--teal);color:var(--teal)}
+.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+
+/* ─── SECTION TITLE ─── */
+.section-label{display:flex;align-items:center;gap:10px;margin:28px 0 14px}
+.section-label h2{font-size:18px;font-weight:900;color:var(--ink)}
+.section-label .sl-line{flex:1;height:1px;background:var(--border)}
+
+/* ─── PRINT ─── */
+@media print{
+  .sidebar,.topbar,.btn-sec,.btn-pri,.btn-amber,.file-wrap{display:none!important}
+  .app{display:block}.main{padding:0}
+  .hero,.card,.kpi{box-shadow:none}
+  body{background:#fff}
+}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:1100px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:relative;height:auto;flex-direction:row;flex-wrap:wrap;padding:14px 16px;gap:8px}
+  .brand{margin-bottom:0;padding-bottom:0;border-bottom:none}
+  .nav-section,.sidebar-card{display:none}
+  .kpi-row{grid-template-columns:repeat(3,1fr)}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .insight-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:650px){
+  .kpi-row{grid-template-columns:1fr 1fr}
+  .insight-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ─── SIDEBAR ─── -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">🚛</div>
+    <div><h1>Planificador Logístico</h1><small>Vista Gerencial</small></div>
+  </div>
+
+  <div class="nav-section">Paneles</div>
+  <button class="nav-btn on" onclick="goTo('sec-resumen')">
+    <span class="ni">📊</span>Resumen ejecutivo
+  </button>
+  <button class="nav-btn" onclick="goTo('sec-graficos')">
+    <span class="ni">📈</span>Análisis gráfico
+  </button>
+  <button class="nav-btn" onclick="goTo('sec-calendario')">
+    <span class="ni">📅</span>Calendario & Gantt
+  </button>
+  <button class="nav-btn" onclick="goTo('sec-camiones')">
+    <span class="ni">🚛</span>Detalle por camión
+  </button>
+
+  <div class="nav-section">Datos</div>
+  <button class="nav-btn" onclick="goTo('sec-productos')">
+    <span class="ni">📦</span>Editar productos
+  </button>
+  <button class="nav-btn" onclick="goTo('sec-alertas')">
+    <span class="ni">🔔</span>Alertas
+  </button>
+
+  <div class="sidebar-card">
+    <b>⚙ Parámetros del sistema</b>
+    4.800 estuches = 1 pallet<br>
+    14 pallets = 1 camión<br>
+    Lead time = 30 días
+  </div>
+</aside>
+
+<!-- ─── MAIN ─── -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <select id="filtroMes"><option value="TODOS">📅 Todos los meses</option></select>
+    <input type="text" id="filtroBusca" placeholder="🔍 Buscar producto..." style="width:190px"/>
+    <button class="btn btn-pri" onclick="aplicar()">▶ Recalcular</button>
+    <div class="file-wrap btn btn-sec">📂 Cargar Excel / CSV<input type="file" id="fileInput" accept=".xlsx,.xls,.csv"/></div>
+    <button class="btn btn-amber" onclick="descargarCSV()">⬇ Exportar CSV</button>
+    <button class="btn btn-sec ml-a" onclick="window.print()">🖨 Imprimir</button>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero" id="sec-resumen">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-title">Dashboard Logístico de Estuches</div>
+        <div class="hero-sub">Planificación anual de camiones, pallets y fechas de pedido — actualización en tiempo real</div>
+        <div class="hero-pills">
+          <span class="hpill">📦 4.800 estuches / pallet</span>
+          <span class="hpill">🚛 14 pallets / camión</span>
+          <span class="hpill">⏱ Lead time 30 días</span>
+          <span class="hpill" id="hero-estado">Cargando...</span>
+        </div>
+      </div>
+      <div class="hero-stat-box">
+        <div class="hero-stat-label">Camiones año</div>
+        <div class="hero-stat-val" id="hero-camiones">—</div>
+        <div class="hero-stat-note" id="hero-pallets">— pallets requeridos</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi accent">
+        <div class="lbl">Estuches totales</div>
+        <div class="val" id="kpiEst">0</div>
+        <div class="note">Filtro actual</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Pallets</div>
+        <div class="val" id="kpiPal">0</div>
+        <div class="note">4.800 est. / pallet</div>
+        <div class="cap-bar"><div class="cap-fill" id="kpiPalBar" style="width:0%"></div></div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Camiones</div>
+        <div class="val" id="kpiCam">0</div>
+        <div class="note">14 pallets / camión</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Ocupación promedio</div>
+        <div class="val" id="kpiOcup">—</div>
+        <div class="note">% capacidad usada</div>
+        <div class="cap-bar"><div class="cap-fill" id="kpiOcupBar" style="width:0%"></div></div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Pallets libres</div>
+        <div class="val" id="kpiLib">0</div>
+        <div class="note">Capacidad no usada</div>
+        <span class="trend" id="kpiLibTrend" style="display:none"></span>
+      </div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="insight-grid" id="insightGrid"></div>
+
+    <!-- ─── GRÁFICOS ─── -->
+    <div id="sec-graficos" class="section-label"><h2>Análisis gráfico anual</h2><div class="sl-line"></div></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-head">
+          <div><div class="card-title">Pallets y camiones por mes</div><div class="card-sub">Barras = pallets · Línea = camiones</div></div>
+        </div>
+        <div class="chart-legend" id="lgBar">
+          <span style="display:flex;align-items:center;gap:5px"><span class="legend-dot" style="background:#0c7b5e"></span>Pallets</span>
+          <span style="display:flex;align-items:center;gap:5px"><span class="legend-dot" style="background:#c2790b"></span>Camiones</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartBar" role="img" aria-label="Pallets y camiones por mes"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div><div class="card-title">Ocupación de camiones</div><div class="card-sub">% de capacidad utilizada por mes (máx. 100%)</div></div>
+        </div>
+        <div class="chart-legend">
+          <span style="display:flex;align-items:center;gap:5px"><span class="legend-dot" style="background:#0fa882"></span>≥ 85% óptimo</span>
+          <span style="display:flex;align-items:center;gap:5px"><span class="legend-dot" style="background:#f59e0b"></span>50–84% bajo</span>
+          <span style="display:flex;align-items:center;gap:5px"><span class="legend-dot" style="background:#e74c3c"></span>&lt; 50% ineficiente</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartOcup" role="img" aria-label="Ocupacion de camiones por mes"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-head">
+          <div><div class="card-title">Top productos por volumen</div><div class="card-sub">Pallets acumulados en el período</div></div>
+        </div>
+        <div class="chart-wrap-lg"><canvas id="chartTop" role="img" aria-label="Top productos por volumen de pallets"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div><div class="card-title">Distribución anual</div><div class="card-sub">Proporción de pallets por mes</div></div>
+        </div>
+        <div style="position:relative;height:220px;max-width:220px;margin:0 auto">
+          <canvas id="chartDonut" role="img" aria-label="Distribucion de pallets por mes"></canvas>
+        </div>
+        <div id="donutLegend" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:11.5px;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <!-- ─── CALENDARIO ─── -->
+    <div id="sec-calendario" class="section-label"><h2>Calendario de pedidos y entregas</h2><div class="sl-line"></div></div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-head">
+        <div><div class="card-title">Tabla de pedidos por mes</div><div class="card-sub">Fecha máx. pedido = día 1 del mes de entrega − 30 días</div></div>
+      </div>
+      <div class="tbl-wrap" id="tablaCalendario"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-head">
+        <div><div class="card-title">Gantt de fabricación y entrega</div><div class="card-sub">Verde = fabricación (30 días) · Azul = entrega estimada</div></div>
+      </div>
+      <div class="gantt-wrap" id="ganttView"></div>
+    </div>
+
+    <!-- ─── CAMIONES ─── -->
+    <div id="sec-camiones" class="section-label"><h2>Detalle por camión y mes</h2><div class="sl-line"></div></div>
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Contenido de cada camión</div><div class="card-sub">Por mes — clic en las tabs para navegar</div></div>
+        <div class="tabs" id="camTabs"></div>
+      </div>
+      <div id="camionesView"></div>
+    </div>
+
+    <!-- ─── PRODUCTOS ─── -->
+    <div id="sec-productos" class="section-label"><h2>Editar necesidades por producto</h2><div class="sl-line"></div></div>
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Base de datos de necesidades</div><div class="card-sub">Modifica cantidades y presiona Recalcular</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-pri" onclick="agregarFila()">＋ Producto</button>
+          <button class="btn btn-sec" onclick="limpiarTodo()">🗑 Limpiar todo</button>
+        </div>
+      </div>
+      <div class="tbl-wrap"><table id="tablaProductos" class="main-tbl"></table></div>
+    </div>
+
+    <!-- ─── ALERTAS ─── -->
+    <div id="sec-alertas" class="section-label"><h2>Alertas y recomendaciones</h2><div class="sl-line"></div></div>
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Panel de alertas</div><div class="card-sub">Basadas en el filtro activo y la fecha de hoy</div></div>
+        <span id="alertCount" class="badge b-gray">0 alertas</span>
+      </div>
+      <div id="alertasView"></div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ── CONSTANTES ────────────────────────────────────────────────
+const PALLET_EST=4800, PALLETS_CAM=14, LEAD=30;
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const CHART_COLORS=['#0c7b5e','#c2790b','#1e4fc2','#8b5cf6','#e74c3c','#0ea5e9','#16a34a','#d97706','#9333ea','#dc2626','#2563eb','#065f46'];
+
+// ── DATOS INICIALES ──────────────────────────────────────────
+let rows=[
+  {"Código":15009226,"Descripción":"ESTUCHE LC PIZZA MOZARELLA 470G","Proveedor":"FARET S.A.","Mayo":24000,"Junio":4800,"Julio":24000,"Agosto":0,"Septiembre":19200,"Octubre":24000,"Noviembre":0,"Diciembre":9600},
+  {"Código":15009225,"Descripción":"ESTUCHE LC PIZZA PEPPERONI 470G","Proveedor":"FARET S.A.","Mayo":38400,"Junio":14400,"Julio":14400,"Agosto":33600,"Septiembre":9600,"Octubre":28800,"Noviembre":28800,"Diciembre":14400},
+  {"Código":15009246,"Descripción":"ESTUCHE MV PIZZA AMERICANA 635GR","Proveedor":"FARET S.A.","Mayo":0,"Junio":9600,"Julio":9600,"Agosto":4800,"Septiembre":9600,"Octubre":9600,"Noviembre":9600,"Diciembre":4800},
+  {"Código":15009245,"Descripción":"ESTUCHE MV PIZZA DE LA HUERTA 675GR","Proveedor":"FARET S.A.","Mayo":0,"Junio":9600,"Julio":4800,"Agosto":9600,"Septiembre":4800,"Octubre":0,"Noviembre":9600,"Diciembre":4800},
+  {"Código":15009244,"Descripción":"ESTUCHE MV PIZZA NAPOLITANA 642GR","Proveedor":"FARET S.A.","Mayo":9600,"Junio":9600,"Julio":9600,"Agosto":9600,"Septiembre":24000,"Octubre":0,"Noviembre":9600,"Diciembre":9600},
+  {"Código":15009332,"Descripción":"ESTUCHE SMU PIZZA SUPREMA 700G","Proveedor":"FARET S.A.","Mayo":9600,"Junio":4800,"Julio":4800,"Agosto":0,"Septiembre":4800,"Octubre":4800,"Noviembre":4800,"Diciembre":4800},
+  {"Código":15009333,"Descripción":"ESTUCHE SMU PIZZA NAPOLITANA 500G","Proveedor":"FARET S.A.","Mayo":9600,"Junio":4800,"Julio":4800,"Agosto":0,"Septiembre":4800,"Octubre":4800,"Noviembre":0,"Diciembre":4800},
+  {"Código":15009334,"Descripción":"ESTUCHE SMU PIZZA PEPPERONI 600G","Proveedor":"FARET S.A.","Mayo":9600,"Junio":4800,"Julio":0,"Agosto":4800,"Septiembre":4800,"Octubre":0,"Noviembre":4800,"Diciembre":0},
+  {"Código":15009335,"Descripción":"ESTUCHE SMU PIZZA 4 QUESOS 650G","Proveedor":"FARET S.A.","Mayo":9600,"Junio":4800,"Julio":0,"Agosto":4800,"Septiembre":4800,"Octubre":0,"Noviembre":4800,"Diciembre":0}
+];
+
+// ── HELPERS ──────────────────────────────────────────────────
+const fmt=n=>Math.round(Number(n)||0).toLocaleString('es-CL');
+const num=v=>Number(String(v??0).replace(/\./g,'').replace(',','.'))||0;
+const meses=()=>MESES.filter(m=>rows.some(r=>r[m]!==undefined));
+function goTo(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'})}
+function fechaPedido(m){const d=new Date(new Date().getFullYear(),MESES.indexOf(m),1);d.setDate(d.getDate()-LEAD);return d}
+function fechaEntrega(m){return new Date(new Date().getFullYear(),MESES.indexOf(m),1)}
+
+// ── ESTADO DE CHARTS ─────────────────────────────────────────
+let charts={bar:null,ocup:null,top:null,donut:null};
+function destroyChart(k){if(charts[k]){charts[k].destroy();charts[k]=null}}
+
+// ── FILTROS ──────────────────────────────────────────────────
+const getFiltroMes=()=>document.getElementById('filtroMes').value;
+const getQ=()=>document.getElementById('filtroBusca').value.toLowerCase().trim();
+function rowsFiltrados(){const q=getQ();if(!q)return rows;return rows.filter(r=>String(r['Código']||'').toLowerCase().includes(q)||String(r['Descripción']||'').toLowerCase().includes(q)||String(r['Proveedor']||'').toLowerCase().includes(q))}
+function mesesFiltrados(){const f=getFiltroMes(),ms=meses();return f==='TODOS'?ms:ms.filter(m=>m===f)}
+
+// ── CÁLCULOS ─────────────────────────────────────────────────
+function calcMes(m,data){
+  const items=data.map(r=>{const est=num(r[m]);const pal=est>0?Math.ceil(est/PALLET_EST):0;return{codigo:r['Código']||'',desc:r['Descripción']||'',proveedor:r['Proveedor']||'',est,pal}}).filter(x=>x.est>0);
+  const tEst=items.reduce((a,b)=>a+b.est,0),tPal=items.reduce((a,b)=>a+b.pal,0),tCam=Math.ceil(tPal/PALLETS_CAM),lib=tCam*PALLETS_CAM-tPal;
+  return{items,tEst,tPal,tCam,lib,ocup:tCam?Math.round(tPal/(tCam*PALLETS_CAM)*100):0};
+}
+function buildTrucks(items){
+  const trucks=[];let cur={n:1,used:0,items:[]};
+  items.forEach(item=>{let rem=item.pal;
+    while(rem>0){const sp=PALLETS_CAM-cur.used;if(sp===0){trucks.push(cur);cur={n:trucks.length+1,used:0,items:[]};continue}
+    const take=Math.min(sp,rem);const ex=cur.items.find(x=>x.codigo===item.codigo);
+    if(ex){ex.palAsig+=take;ex.estAsig+=take*PALLET_EST}else cur.items.push({...item,palAsig:take,estAsig:Math.min(item.est,take*PALLET_EST)});
+    cur.used+=take;rem-=take;if(cur.used===PALLETS_CAM){trucks.push(cur);cur={n:trucks.length+1,used:0,items:[]}}}});
+  if(cur.used>0||trucks.length===0)trucks.push(cur);return trucks;
+}
+
+// ── RENDER TABLA PRODUCTOS ───────────────────────────────────
+function renderTabla(){
+  const ms=meses();
+  const sel=document.getElementById('filtroMes');const cur=sel.value;
+  sel.innerHTML='<option value="TODOS">📅 Todos los meses</option>'+ms.map(m=>`<option value="${m}"${m===cur?' selected':''}>${m}</option>`).join('');
+  const cols=['Código','Descripción','Proveedor',...ms];
+  let h='<thead><tr>'+cols.map(c=>`<th${MESES.includes(c)?' class="n"':''}>${c}</th>`).join('')+'<th style="width:44px"></th></tr></thead><tbody>';
+  rows.forEach((r,i)=>{
+    h+='<tr>';
+    cols.forEach(c=>{
+      if(MESES.includes(c)){const v=r[c]!==undefined?num(r[c]):0;h+=`<td class="n"><input class="td-edit num-edit" type="text" data-key="${c}" value="${v}" oninput="rows[${i}]['${c}']=this.value"/></td>`}
+      else if(c==='Código'){h+=`<td><input class="td-edit" type="text" data-key="${c}" value="${r[c]||''}" style="width:95px;font-family:'JetBrains Mono',monospace;font-weight:600"/></td>`}
+      else if(c==='Descripción'){h+=`<td><input class="td-edit" type="text" data-key="${c}" value="${r[c]||''}" style="min-width:200px;width:100%"/></td>`}
+      else{h+=`<td><input class="td-edit" type="text" data-key="${c}" value="${r[c]||''}" style="width:105px"/></td>`}
+    });
+    h+=`<td><button class="del-btn" title="Eliminar" onclick="borrarFila(${i})">🗑</button></td></tr>`;
+  });
+  h+='</tbody>';
+  document.getElementById('tablaProductos').innerHTML=h;
+}
+function leerInputs(){document.querySelectorAll('#tablaProductos tbody tr').forEach((tr,i)=>{if(!rows[i])return;tr.querySelectorAll('input[data-key]').forEach(inp=>{rows[i][inp.dataset.key]=inp.value})})}
+function borrarFila(i){leerInputs();rows.splice(i,1);renderTabla();aplicar()}
+function agregarFila(){leerInputs();const ms=meses().length?meses():[...MESES.slice(4,12)];const r={'Código':'','Descripción':'Nuevo producto','Proveedor':''};ms.forEach(m=>r[m]=0);rows.push(r);renderTabla();aplicar()}
+function limpiarTodo(){if(!confirm('¿Limpiar todos los productos?'))return;rows=[];renderTabla();aplicar()}
+
+// ── RENDER CALENDARIO ────────────────────────────────────────
+function renderCalendario(byMes){
+  const today=new Date();today.setHours(0,0,0,0);
+  let h=`<table class="main-tbl"><thead><tr><th>Mes</th><th class="n">Estuches</th><th class="n">Pallets</th><th class="n">Camiones</th><th class="n">Ocupación</th><th>Fecha máx. pedido</th><th>Entrega estimada</th><th>Estado</th></tr></thead><tbody>`;
+  Object.entries(byMes).forEach(([m,d])=>{
+    const fp=fechaPedido(m),fe=fechaEntrega(m);
+    const late=fp<today&&d.tPal>0,warn=d.tCam>0&&d.lib>=7;
+    const rc=d.tPal===0?'row-none':late?'row-late':warn?'row-warn':'row-ok';
+    const badge=d.tPal===0?'<span class="badge b-gray">Sin necesidad</span>':late?'<span class="badge b-red">⚠ Pedido atrasado</span>':warn?'<span class="badge b-warn">Baja ocupación</span>':'<span class="badge b-ok">✓ Normal</span>';
+    const ocupColor=d.ocup>=85?'#0c7b5e':d.ocup>=50?'#c2790b':'#c0392b';
+    h+=`<tr class="${rc}"><td><b>${m}</b></td><td class="n">${fmt(d.tEst)}</td><td class="n">${fmt(d.tPal)}</td><td class="n">${fmt(d.tCam)}</td><td class="n" style="color:${ocupColor};font-weight:800">${d.ocup}%</td><td style="font-family:'JetBrains Mono',monospace;font-size:12.5px"><b>${fp.toLocaleDateString('es-CL')}</b></td><td style="font-family:'JetBrains Mono',monospace;font-size:12.5px">${fe.toLocaleDateString('es-CL')}</td><td>${badge}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  document.getElementById('tablaCalendario').innerHTML=h;
+}
+
+// ── RENDER GANTT ─────────────────────────────────────────────
+function renderGantt(byMes){
+  const yr=new Date().getFullYear();
+  const start=new Date(yr,0,1),end=new Date(yr,11,31);
+  const total=end-start;
+  const pct=d=>Math.max(0,Math.min(100,((d-start)/total)*100));
+  let h='';
+  Object.entries(byMes).filter(([,d])=>d.tPal>0).forEach(([m,d])=>{
+    const fp=fechaPedido(m),fe=fechaEntrega(m);
+    const p1=pct(fp),p2=pct(fe),w=Math.max(0.5,p2-p1);
+    h+=`<div class="gantt-row">
+      <div class="gantt-label">${m}</div>
+      <div class="gantt-track">
+        <div class="gantt-bar" style="left:${p1}%;width:${w}%;background:linear-gradient(90deg,#0c7b5e,#0fa882)" title="Pedido: ${fp.toLocaleDateString('es-CL')} → Entrega: ${fe.toLocaleDateString('es-CL')}">
+          ${w>8?`Pedido ${fp.toLocaleDateString('es-CL',{day:'2-digit',month:'short'})}`:''}
+        </div>
+      </div>
+      <div class="gantt-meta">${fmt(d.tCam)} cam · ${fmt(d.tPal)} pal</div>
+    </div>`;
+  });
+  document.getElementById('ganttView').innerHTML=h||'<div style="color:var(--muted);padding:20px;text-align:center">Sin datos para mostrar</div>';
+}
+
+// ── RENDER CAMIONES ──────────────────────────────────────────
+let camMes=null;
+function renderCamiones(byMes){
+  const entries=Object.entries(byMes).filter(([,d])=>d.tPal>0);
+  if(!entries.length){document.getElementById('camTabs').innerHTML='';document.getElementById('camionesView').innerHTML='<div style="color:var(--muted);padding:30px;text-align:center">Sin datos con el filtro actual.</div>';return}
+  if(!camMes||!entries.find(([m])=>m===camMes)) camMes=entries[0][0];
+  document.getElementById('camTabs').innerHTML=entries.map(([m])=>`<button class="tab${m===camMes?' on':''}" onclick="setCamMes('${m}',byMesCache)">${m}</button>`).join('');
+  showCamMes(camMes,byMes);
+}
+let byMesCache={};
+function setCamMes(m,bm){camMes=m;document.querySelectorAll('.tab').forEach(t=>{t.classList.toggle('on',t.textContent.trim()===m)});showCamMes(m,bm)}
+function showCamMes(m,bm){
+  const d=bm[m];if(!d){document.getElementById('camionesView').innerHTML='';return}
+  const trucks=buildTrucks(d.items);
+  let h=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+    <span class="badge b-blue">${fmt(d.tEst)} estuches</span>
+    <span class="badge b-ok">${fmt(d.tPal)} pallets</span>
+    <span class="badge b-gray">${fmt(d.tCam)} camiones</span>
+    <span class="badge b-warn">Pedido máx: ${fechaPedido(m).toLocaleDateString('es-CL')}</span>
+    <span class="badge ${d.ocup>=85?'b-ok':d.ocup>=50?'b-warn':'b-red'}">${d.ocup}% ocupación</span>
+  </div><div class="truck-grid">`;
+  trucks.forEach(t=>{
+    const pct=Math.round(t.used/PALLETS_CAM*100);
+    const hcls=t.used===PALLETS_CAM?'full':t.used<7?'low':'';
+    h+=`<div class="truck"><div class="truck-hd ${hcls}"><div class="truck-name">🚛 Camión ${t.n}</div><div class="truck-cap">${t.used}/${PALLETS_CAM} · ${pct}%</div></div>
+    <div class="pbar">${Array.from({length:PALLETS_CAM},(_,i)=>`<div class="ps${i<t.used?' u':''}"></div>`).join('')}</div>
+    <div class="truck-body">${t.items.map(it=>`<div class="ti"><strong>${it.desc||it.codigo}</strong><span>${it.codigo} · ${it.palAsig} pallets · ${fmt(it.estAsig)} est.</span></div>`).join('')||'<div style="color:var(--muted);font-size:13px">Sin carga</div>'}</div></div>`;
+  });
+  h+='</div>';
+  document.getElementById('camionesView').innerHTML=h;
+}
+
+// ── RENDER ALERTAS ───────────────────────────────────────────
+function renderAlertas(byMes){
+  const today=new Date();today.setHours(0,0,0,0);
+  const alerts=[];let critCount=0;
+  Object.entries(byMes).forEach(([m,d])=>{
+    if(d.tPal===0)return;
+    const fp=fechaPedido(m);
+    if(fp<today){critCount++;alerts.push(`<div class="alert a-red"><div class="alert-icon">🚨</div><div><b>${m}:</b> Fecha máxima de pedido ya venció (${fp.toLocaleDateString('es-CL')}). Riesgo real de atraso en la cadena de suministro. Gestionar pedido urgente.</div></div>`)}
+    else{const dias=Math.round((fp-today)/86400000);if(dias<=10){critCount++;alerts.push(`<div class="alert a-warn"><div class="alert-icon">⏰</div><div><b>${m}:</b> Solo quedan <b>${dias} días</b> para el pedido máximo (${fp.toLocaleDateString('es-CL')}). Confirmar orden a más tardar esta semana.</div></div>`)}}
+    if(d.lib>=7)alerts.push(`<div class="alert a-info"><div class="alert-icon">📦</div><div><b>${m}:</b> Último camión con ${d.lib} pallets libres (${Math.round(d.lib/PALLETS_CAM*100)}% desperdiciado). Evalúa consolidar con entrega adicional para optimizar costo logístico.</div></div>`);
+    if(d.ocup<50&&d.tCam>1)alerts.push(`<div class="alert a-warn"><div class="alert-icon">⚠️</div><div><b>${m}:</b> Ocupación general del ${d.ocup}% — considerar negociar con proveedor para entregar en menos camiones o consolidar meses.</div></div>`);
+  });
+  if(!alerts.length)alerts.push(`<div class="alert a-ok"><div class="alert-icon">✅</div><div><b>Sin alertas críticas.</b> La planificación está en orden con el filtro actual.</div></div>`);
+  document.getElementById('alertasView').innerHTML=alerts.join('');
+  document.getElementById('alertCount').textContent=`${critCount} críticas · ${alerts.length} total`;
+  document.getElementById('alertCount').className=`badge ${critCount>0?'b-red':alerts.length>1?'b-warn':'b-ok'}`;
+}
+
+// ── RENDER CHARTS ────────────────────────────────────────────
+function renderCharts(byMes){
+  const labels=Object.keys(byMes);
+  const palData=labels.map(m=>byMes[m].tPal);
+  const camData=labels.map(m=>byMes[m].tCam);
+  const ocupData=labels.map(m=>byMes[m].ocup);
+
+  destroyChart('bar');
+  charts.bar=new Chart(document.getElementById('chartBar'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {type:'bar',label:'Pallets',data:palData,backgroundColor:'rgba(12,123,94,.75)',borderRadius:6,yAxisID:'y'},
+      {type:'line',label:'Camiones',data:camData,borderColor:'#c2790b',backgroundColor:'rgba(194,121,11,.1)',tension:.4,pointRadius:5,pointBackgroundColor:'#c2790b',yAxisID:'y2',borderWidth:2.5}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:11}}},y2:{beginAtZero:true,position:'right',grid:{display:false},ticks:{font:{size:11}}}}}
+  });
+
+  destroyChart('ocup');
+  charts.ocup=new Chart(document.getElementById('chartOcup'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'Ocupación %',data:ocupData,backgroundColor:ocupData.map(v=>v>=85?'rgba(12,123,94,.75)':v>=50?'rgba(194,121,11,.75)':'rgba(192,57,43,.75)'),borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,grid:{color:'rgba(0,0,0,.05)'},ticks:{callback:v=>v+'%',font:{size:11}}},x:{ticks:{font:{size:11}}}}}
+  });
+
+  // Top products
+  const topData=rows.map(r=>({desc:(r['Descripción']||'').substring(0,28),pal:mesesFiltrados().reduce((a,m)=>a+Math.ceil((num(r[m])||0)/PALLET_EST),0)})).filter(x=>x.pal>0).sort((a,b)=>b.pal-a.pal).slice(0,7);
+  destroyChart('top');
+  charts.top=new Chart(document.getElementById('chartTop'),{
+    type:'bar',
+    data:{labels:topData.map(x=>x.desc),datasets:[{label:'Pallets',data:topData.map(x=>x.pal),backgroundColor:CHART_COLORS.slice(0,topData.length).map(c=>c+'cc'),borderRadius:5}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:11}}},y:{ticks:{font:{size:11}}}}}
+  });
+
+  // Donut
+  const donutLabels=labels.filter(m=>byMes[m].tPal>0);
+  const donutData=donutLabels.map(m=>byMes[m].tPal);
+  const dColors=CHART_COLORS.slice(0,donutLabels.length);
+  destroyChart('donut');
+  charts.donut=new Chart(document.getElementById('chartDonut'),{
+    type:'doughnut',
+    data:{labels:donutLabels,datasets:[{data:donutData,backgroundColor:dColors,borderWidth:2,borderColor:'#fff',hoverOffset:8}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'65%'}
+  });
+  const total=donutData.reduce((a,b)=>a+b,0);
+  document.getElementById('donutLegend').innerHTML=donutLabels.map((m,i)=>`<span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:${dColors[i]};flex-shrink:0"></span>${m} ${total?Math.round(donutData[i]/total*100):0}%</span>`).join('');
+}
+
+// ── RENDER KPIs ──────────────────────────────────────────────
+function renderKPIs(byMes){
+  let tEst=0,tPal=0,tCam=0,tLib=0;
+  Object.values(byMes).forEach(d=>{tEst+=d.tEst;tPal+=d.tPal;tCam+=d.tCam;tLib+=d.lib});
+  const ocup=tCam?Math.round(tPal/(tCam*PALLETS_CAM)*100):0;
+  document.getElementById('kpiEst').textContent=fmt(tEst);
+  document.getElementById('kpiPal').textContent=fmt(tPal);
+  document.getElementById('kpiCam').textContent=fmt(tCam);
+  document.getElementById('kpiOcup').textContent=tCam?ocup+'%':'—';
+  document.getElementById('kpiLib').textContent=fmt(tLib);
+  const of=document.getElementById('kpiOcupBar');of.style.width=ocup+'%';of.className='cap-fill'+(ocup>=85?'':ocup>=50?' warn':' red');
+  document.getElementById('kpiPalBar').style.width=Math.min(100,tPal/(tCam*PALLETS_CAM||1)*100)+'%';
+  // Hero
+  document.getElementById('hero-camiones').textContent=fmt(tCam);
+  document.getElementById('hero-pallets').textContent=fmt(tPal)+' pallets requeridos';
+  const ms=mesesFiltrados();
+  document.getElementById('hero-estado').textContent=ms.length===1?ms[0]:`${ms.length} meses activos`;
+  // Trend in libres
+  const lt=document.getElementById('kpiLibTrend');
+  if(tLib>0){lt.style.display='inline-block';lt.className='trend'+(tLib>20?' trend-dn':' trend-ok');lt.textContent=tLib>=7*tCam?'Optimizar':'Adecuado'}else lt.style.display='none';
+}
+
+// ── INSIGHTS ────────────────────────────────────────────────
+function renderInsights(byMes){
+  const today=new Date();today.setHours(0,0,0,0);
+  const entries=Object.entries(byMes).filter(([,d])=>d.tPal>0);
+  let bestMes='—',bestOcup=0,worstMes='—',worstOcup=100,urgente='—',urgDias=9999,maxCam=0,maxCamMes='—';
+  entries.forEach(([m,d])=>{
+    if(d.ocup>bestOcup){bestOcup=d.ocup;bestMes=m}
+    if(d.ocup<worstOcup){worstOcup=d.ocup;worstMes=m}
+    if(d.tCam>maxCam){maxCam=d.tCam;maxCamMes=m}
+    const dias=Math.round((fechaPedido(m)-today)/86400000);
+    if(dias>=0&&dias<urgDias){urgDias=dias;urgente=m}
+  });
+  document.getElementById('insightGrid').innerHTML=`
+    <div class="insight"><div class="i-icon">🏆</div><div class="i-title">Mejor ocupación</div><div class="i-desc">${bestMes} con ${bestOcup}% de uso — camiones bien cargados.</div></div>
+    <div class="insight"><div class="i-icon">📉</div><div class="i-title">Menor ocupación</div><div class="i-desc">${worstMes} con ${worstOcup}% — evaluar consolidar con otro mes.</div></div>
+    <div class="insight"><div class="i-icon">📅</div><div class="i-title">Pedido más urgente</div><div class="i-desc">${urgente!=='—'?`${urgente} requiere pedido en <b>${urgDias} días</b>.`:'Sin pedidos urgentes pendientes.'}</div></div>
+  `;
+}
+
+// ── APLICAR ─────────────────────────────────────────────────
+function aplicar(){
+  leerInputs();
+  const ms=mesesFiltrados(),data=rowsFiltrados();
+  const byMes={};ms.forEach(m=>{byMes[m]=calcMes(m,data)});
+  byMesCache=byMes;
+  renderTabla();
+  renderKPIs(byMes);
+  renderInsights(byMes);
+  renderCharts(byMes);
+  renderCalendario(byMes);
+  renderGantt(byMes);
+  renderCamiones(byMes);
+  renderAlertas(byMes);
+}
+
+// ── ARCHIVO ──────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    rows=XLSX.utils.sheet_to_json(ws,{defval:0}).map(r=>{
+      const o={};
+      Object.keys(r).forEach(k=>{
+        let key=String(k).trim();
+        if(/c[oó]d/i.test(key))key='Código';
+        else if(/desc/i.test(key))key='Descripción';
+        else if(/prov/i.test(key))key='Proveedor';
+        else if(/[aá]rea/i.test(key))key='Área';
+        o[key]=r[k];
+      });
+      return o;
+    });
+    renderTabla();aplicar();
+  };
+  reader.readAsArrayBuffer(f);
+});
+
+// ── CSV ──────────────────────────────────────────────────────
+function descargarCSV(){
+  leerInputs();const ms=meses();const cols=['Código','Descripción','Proveedor',...ms];
+  const csv=[cols.join(';'),...rows.map(r=>cols.map(c=>`"${String(r[c]??'').replace(/"/g,'""')}"`).join(';'))].join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));a.download='plan_logistico.csv';a.click();
+}
+
+// ── LISTENERS ────────────────────────────────────────────────
+document.getElementById('filtroMes').addEventListener('change',aplicar);
+document.getElementById('filtroBusca').addEventListener('input',aplicar);
+
+// ── INIT ─────────────────────────────────────────────────────
+renderTabla();aplicar();
+</script>
+</body>
+</html>
