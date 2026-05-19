@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planificador Camiones y Pallets</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root{--green:#0f5f46;--green2:#13865f;--mint:#e8f6ef;--bg:#f5f7f6;--text:#15251f;--muted:#66756e;--card:#ffffff;--line:#dfe7e3;--orange:#f59e0b;--red:#dc2626;--blue:#2563eb;}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    header{background:linear-gradient(135deg,var(--green),#073c2e);color:white;padding:28px 32px 38px;border-bottom-left-radius:28px;border-bottom-right-radius:28px;box-shadow:0 12px 30px rgba(0,0,0,.14)}
+    .top{display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}.brand{display:flex;gap:14px;align-items:center}.logo{width:52px;height:52px;border-radius:16px;background:#fff;color:var(--green);font-weight:900;display:grid;place-items:center;font-size:22px;box-shadow:0 8px 20px rgba(0,0,0,.18)}
+    h1{margin:0;font-size:28px}.sub{margin:6px 0 0;color:#d7efe5}.pill{background:rgba(255,255,255,.14);padding:10px 14px;border-radius:999px;font-weight:700;border:1px solid rgba(255,255,255,.22)}
+    main{max-width:1420px;margin:-22px auto 40px;padding:0 20px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:0 8px 24px rgba(13,47,35,.07)}
+    .kpi small{color:var(--muted);font-weight:700}.kpi .num{font-size:30px;font-weight:900;margin-top:8px}.kpi .note{color:var(--muted);font-size:13px;margin-top:4px}.section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}h2{margin:0;font-size:20px}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.btn{border:0;border-radius:14px;padding:11px 15px;font-weight:800;cursor:pointer;background:var(--green);color:white;box-shadow:0 8px 18px rgba(15,95,70,.18)}.btn.secondary{background:#fff;color:var(--green);border:1px solid var(--line);box-shadow:none}.btn.orange{background:var(--orange)}
+    input,select{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff;min-height:40px}input[type=file]{max-width:330px}.mini{font-size:12px;color:var(--muted)}
+    .layout{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}.wide{grid-column:1/-1}.table-wrap{overflow:auto;border-radius:16px;border:1px solid var(--line)}table{width:100%;border-collapse:collapse;background:#fff}th{position:sticky;top:0;background:#eef7f2;color:#154d3c;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.03em;padding:12px;border-bottom:1px solid var(--line);z-index:2}td{padding:10px 12px;border-bottom:1px solid #edf1ef;font-size:13px}td.num,th.num{text-align:right}.editable td input{width:100%;min-width:90px;border:1px solid transparent;background:#fafcfb;padding:8px}.editable td input:focus{outline:2px solid #a7dfc7;background:white}.month-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}.tab{border:1px solid var(--line);background:white;color:var(--green);padding:9px 12px;border-radius:999px;font-weight:800;cursor:pointer}.tab.active{background:var(--green);color:white}.bar{height:10px;background:#edf3f0;border-radius:999px;overflow:hidden;margin-top:8px}.fill{height:100%;background:linear-gradient(90deg,var(--green2),#6bd19e);border-radius:999px}.truck-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}.truck{border:1px solid var(--line);border-radius:18px;background:#fff;padding:14px}.truck-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.truck-title{font-weight:900}.truck-load{font-size:12px;font-weight:900;padding:6px 9px;border-radius:999px;background:var(--mint);color:var(--green)}.truck.full .truck-load{background:#fee2e2;color:var(--red)}.item{border-left:4px solid var(--green2);background:#f8fbfa;border-radius:12px;padding:9px 10px;margin:8px 0}.item strong{display:block;font-size:13px}.item span{font-size:12px;color:var(--muted)}.empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:16px;background:#fff}.tag{font-size:12px;border-radius:999px;padding:6px 9px;background:#eef2ff;color:#3730a3;font-weight:800}.danger{color:var(--red);font-weight:900}.ok{color:var(--green);font-weight:900}@media(max-width:980px){.grid,.layout{grid-template-columns:1fr}header{padding:22px}.kpi .num{font-size:24px}}
+  </style>
+</head>
+<body>
+<header><div class="top"><div class="brand"><div class="logo">MV</div><div><h1>Planificador de Estuches, Pallets y Camiones</h1><p class="sub">Carga tu planilla, agrega productos manualmente y revisa qué trae cada camión por mes.</p></div></div><div class="pill">1 pallet = 4.800 estuches · 1 camión = 14 pallets · Lead time = 30 días</div></div></header>
+<main>
+  <section class="grid">
+    <div class="card kpi"><small>Estuches mes seleccionado</small><div class="num" id="kpiEstuches">0</div><div class="note">Según necesidad cargada/editada</div></div>
+    <div class="card kpi"><small>Pallets requeridos</small><div class="num" id="kpiPallets">0</div><div class="note">Redondeado hacia arriba</div></div>
+    <div class="card kpi"><small>Camiones necesarios</small><div class="num" id="kpiCamiones">0</div><div class="note">Máximo 14 pallets por camión</div></div>
+    <div class="card kpi"><small>Fecha máxima pedido</small><div class="num" id="kpiFecha">-</div><div class="note">30 días antes del primer día del mes</div></div>
+  </section>
+
+  <section class="card wide">
+    <div class="section-title"><div><h2>1) Cargar planilla o trabajar manualmente</h2><div class="mini">Usa las mismas columnas: Código material, Descripción de material, Proveedor, Área, Mayo, Junio, Julio...</div></div><div class="controls"><input type="file" id="fileInput" accept=".xlsx,.xls,.csv"/><button class="btn" onclick="aplicar()">Aplicar</button><button class="btn secondary" onclick="agregarFila()">+ Agregar producto</button><button class="btn secondary" onclick="limpiar()">Limpiar</button><button class="btn orange" onclick="descargarCSV()">Descargar CSV</button></div></div>
+  </section>
+
+  <section class="layout">
+    <div class="card"><div class="section-title"><h2>2) Base editable de necesidades</h2><span class="tag">Puedes cambiar cantidades y volver a Aplicar</span></div><div class="table-wrap"><table class="editable" id="tablaInput"></table></div></div>
+    <div class="card"><div class="section-title"><h2>3) Resumen por mes</h2><select id="mesSelect" onchange="renderTodo()"></select></div><div class="table-wrap"><table id="tablaResumen"></table></div></div>
+  </section>
+
+  <section class="card wide" style="margin-top:16px"><div class="section-title"><div><h2>4) Qué trae cada camión por mes</h2><div class="mini">El sistema reparte los pallets por camión, respetando máximo 14 pallets. Si un producto no cabe completo, lo divide entre camiones.</div></div><div class="month-tabs" id="tabsMeses"></div></div><div id="camiones"></div></section>
+
+  <section class="card wide" style="margin-top:16px"><div class="section-title"><h2>5) Detalle calculado por producto</h2><span class="mini">Estuches y pallets por producto del mes seleccionado</span></div><div class="table-wrap"><table id="tablaDetalle"></table></div></section>
+</main>
+<script>
+const PALLET_ESTUCHES=4800, PALLETS_CAMION=14, LEAD_DIAS=30;
+const mesesOrden=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let rows = [
+{"Código material":15009147,"Descripción de material":"ESTUCHE C&CO PIZZA 4 QUESOS 650 G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":0,"Junio":0,"Julio":4800,"Agosto":0,"Septiembre":9600,"Octubre":0,"Noviembre":0,"Diciembre":0},
+{"Código material":15009148,"Descripción de material":"ESTUCHE C&CO PIZZA AMERIC. DELUXE 719 G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":0,"Junio":0,"Julio":9600,"Agosto":0,"Septiembre":4800,"Octubre":9600,"Noviembre":9600,"Diciembre":9600},
+{"Código material":15009149,"Descripción de material":"ESTUCHE C&CO PIZZA PEPPERONI 660 G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":0,"Junio":9600,"Julio":0,"Agosto":9600,"Septiembre":9600,"Octubre":4800,"Noviembre":9600,"Diciembre":0},
+{"Código material":15009224,"Descripción de material":"ESTUCHE LC PIZZA JAMON/MOZZARELLA 470 G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":24000,"Junio":28800,"Julio":14400,"Agosto":14400,"Septiembre":33600,"Octubre":14400,"Noviembre":24000,"Diciembre":19200},
+{"Código material":15009226,"Descripción de material":"ESTUCHE LC PIZZA MOZARELLA 470 G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":24000,"Junio":4800,"Julio":24000,"Agosto":0,"Septiembre":19200,"Octubre":24000,"Noviembre":0,"Diciembre":9600},
+{"Código material":15009225,"Descripción de material":"ESTUCHE LC PIZZA PEPPERONI 470 G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":38400,"Junio":14400,"Julio":14400,"Agosto":33600,"Septiembre":9600,"Octubre":28800,"Noviembre":28800,"Diciembre":14400},
+{"Código material":15009246,"Descripción de material":"ESTUCHE MV PIZZA AMERICANA 635 GR","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":0,"Junio":9600,"Julio":9600,"Agosto":4800,"Septiembre":9600,"Octubre":9600,"Noviembre":9600,"Diciembre":4800},
+{"Código material":15009245,"Descripción de material":"ESTUCHE MV PIZZA DE LA HUERTA 675 GR","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":0,"Junio":9600,"Julio":4800,"Agosto":9600,"Septiembre":4800,"Octubre":0,"Noviembre":9600,"Diciembre":4800},
+{"Código material":15009244,"Descripción de material":"ESTUCHE MV PIZZA NAPOLITANA 642 GR","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":9600,"Junio":9600,"Julio":9600,"Agosto":9600,"Septiembre":24000,"Octubre":0,"Noviembre":9600,"Diciembre":9600},
+{"Código material":15009247,"Descripción de material":"ESTUCHE MV PIZZA VEGETARIANA 650 GR","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":0,"Junio":0,"Julio":0,"Agosto":0,"Septiembre":0,"Octubre":0,"Noviembre":0,"Diciembre":0},
+{"Código material":15009332,"Descripción de material":"ESTUCHE SMU PIZZA SUPREMA 700G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":9600,"Junio":4800,"Julio":4800,"Agosto":0,"Septiembre":4800,"Octubre":4800,"Noviembre":4800,"Diciembre":4800},
+{"Código material":15009333,"Descripción de material":"ESTUCHE SMU PIZZA NAPOLITANA 500G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":9600,"Junio":4800,"Julio":4800,"Agosto":0,"Septiembre":4800,"Octubre":4800,"Noviembre":0,"Diciembre":4800},
+{"Código material":15009334,"Descripción de material":"ESTUCHE SMU PIZZA PEPPERONI 600G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":9600,"Junio":4800,"Julio":0,"Agosto":4800,"Septiembre":4800,"Octubre":0,"Noviembre":4800,"Diciembre":0},
+{"Código material":15009335,"Descripción de material":"ESTUCHE SMU PIZZA 4 QUESOS 650G","Proveedor":"FARET S.A.","Área":"ADQ","Mayo":9600,"Junio":4800,"Julio":0,"Agosto":4800,"Septiembre":4800,"Octubre":0,"Noviembre":4800,"Diciembre":0}
+];
+function fmt(n){return Math.round(Number(n)||0).toLocaleString('es-CL')} function num(v){return Number(String(v??0).replace(/\./g,'').replace(',','.'))||0}
+function cols(){let base=['Código material','Descripción de material','Proveedor','Área']; let ms=mesesOrden.filter(m=>rows.some(r=>r[m]!==undefined)); return [...base,...ms];}
+function meses(){return mesesOrden.filter(m=>cols().includes(m));}
+function renderInput(){let c=cols(); let html='<thead><tr>'+c.map(x=>`<th${mesesOrden.includes(x)?' class="num"':''}>${x}</th>`).join('')+'<th></th></tr></thead><tbody>'; rows.forEach((r,i)=>{html+='<tr>'+c.map(k=>`<td${mesesOrden.includes(k)?' class="num"':''}><input value="${r[k]??''}" onchange="rows[${i}]['${k}']=this.value"></td>`).join('')+`<td><button class="btn secondary" onclick="borrarFila(${i})">×</button></td></tr>`}); html+='</tbody>'; document.getElementById('tablaInput').innerHTML=html; renderMesSelect();}
+function renderMesSelect(){let sel=document.getElementById('mesSelect'); let cur=sel.value||meses()[0]||'Mayo'; sel.innerHTML=meses().map(m=>`<option ${m==cur?'selected':''}>${m}</option>`).join(''); if(!sel.value && meses().length) sel.value=meses()[0];}
+function aplicar(){leerInputs(); renderTodo();}
+function leerInputs(){document.querySelectorAll('#tablaInput tbody tr').forEach((tr,i)=>{let c=cols(); tr.querySelectorAll('input').forEach((inp,j)=>rows[i][c[j]]=inp.value);});}
+function agregarFila(){leerInputs(); let r={'Código material':'','Descripción de material':'','Proveedor':'','Área':'ADQ'}; mesesOrden.forEach(m=>r[m]=0); rows.push(r); renderInput(); renderTodo();}
+function borrarFila(i){rows.splice(i,1); renderInput(); renderTodo();}
+function limpiar(){rows=[]; renderInput(); renderTodo();}
+function detalleMes(m){return rows.map(r=>({codigo:r['Código material']||'', desc:r['Descripción de material']||r['Descripción de material ']||'', proveedor:r.Proveedor||'', area:r['Área']||'', estuches:num(r[m]), pallets:Math.ceil(num(r[m])/PALLET_ESTUCHES)})).filter(x=>x.estuches>0)}
+function resumen(){return meses().map(m=>{let est=rows.reduce((a,r)=>a+num(r[m]),0), pal=detalleMes(m).reduce((a,x)=>a+x.pallets,0); return {mes:m,estuches:est,pallets:pal,camiones:Math.ceil(pal/PALLETS_CAMION),fecha:fechaPedido(m)};});}
+function fechaPedido(m){let idx=mesesOrden.indexOf(m); let year=new Date().getFullYear(); let d=new Date(year,idx,1); d.setDate(d.getDate()-LEAD_DIAS); return d.toLocaleDateString('es-CL');}
+function asignarCamiones(m){let items=detalleMes(m).flatMap(x=>Array.from({length:x.pallets},(_,i)=>({...x,palletUnit:i+1}))); let trucks=[]; items.forEach(it=>{let t=trucks[trucks.length-1]; if(!t||t.pallets>=PALLETS_CAMION){t={n:trucks.length+1,pallets:0,items:{}}; trucks.push(t);} t.pallets++; let key=it.codigo+'|'+it.desc; if(!t.items[key]) t.items[key]={...it,pallets:0,estuchesPlan:0}; t.items[key].pallets++; t.items[key].estuchesPlan += PALLET_ESTUCHES;}); return trucks;}
+function renderTodo(){renderMesSelect(); let m=document.getElementById('mesSelect').value||meses()[0]; let res=resumen(), actual=res.find(x=>x.mes==m)||{estuches:0,pallets:0,camiones:0,fecha:'-'}; document.getElementById('kpiEstuches').textContent=fmt(actual.estuches); document.getElementById('kpiPallets').textContent=fmt(actual.pallets); document.getElementById('kpiCamiones').textContent=fmt(actual.camiones); document.getElementById('kpiFecha').textContent=actual.fecha;
+ document.getElementById('tabsMeses').innerHTML=meses().map(x=>`<button class="tab ${x==m?'active':''}" onclick="document.getElementById('mesSelect').value='${x}';renderTodo()">${x}</button>`).join('');
+ document.getElementById('tablaResumen').innerHTML='<thead><tr><th>Mes</th><th class="num">Estuches</th><th class="num">Pallets</th><th class="num">Camiones</th><th>Pedido máximo</th></tr></thead><tbody>'+res.map(r=>`<tr><td><b>${r.mes}</b></td><td class="num">${fmt(r.estuches)}</td><td class="num">${fmt(r.pallets)}</td><td class="num">${fmt(r.camiones)}</td><td>${r.fecha}</td></tr>`).join('')+'</tbody>';
+ let det=detalleMes(m); document.getElementById('tablaDetalle').innerHTML='<thead><tr><th>Código</th><th>Descripción</th><th>Proveedor</th><th class="num">Estuches</th><th class="num">Pallets</th></tr></thead><tbody>'+det.map(x=>`<tr><td>${x.codigo}</td><td>${x.desc}</td><td>${x.proveedor}</td><td class="num">${fmt(x.estuches)}</td><td class="num"><b>${fmt(x.pallets)}</b></td></tr>`).join('')+'</tbody>';
+ let trucks=asignarCamiones(m); if(!trucks.length){document.getElementById('camiones').innerHTML='<div class="empty">No hay estuches planificados para este mes.</div>';return}
+ document.getElementById('camiones').innerHTML='<div class="truck-grid">'+trucks.map(t=>`<div class="truck ${t.pallets>=PALLETS_CAMION?'full':''}"><div class="truck-head"><div class="truck-title">🚛 Camión ${t.n}</div><div class="truck-load">${t.pallets}/14 pallets</div></div><div class="bar"><div class="fill" style="width:${Math.min(100,t.pallets/PALLETS_CAMION*100)}%"></div></div>${Object.values(t.items).map(it=>`<div class="item"><strong>${it.codigo} · ${it.desc}</strong><span>${it.pallets} pallets · ${fmt(it.estuchesPlan)} estuches planificados</span></div>`).join('')}</div>`).join('')+'</div>';
+}
+document.getElementById('fileInput').addEventListener('change', e=>{let f=e.target.files[0]; if(!f)return; let reader=new FileReader(); reader.onload=ev=>{let wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'}); let ws=wb.Sheets[wb.SheetNames[0]]; rows=XLSX.utils.sheet_to_json(ws,{defval:0}).map(r=>{let o={}; Object.keys(r).forEach(k=>o[String(k).trim()]=r[k]); if(o['Descripción de material ']){o['Descripción de material']=o['Descripción de material ']; delete o['Descripción de material ']} return o;}); renderInput(); renderTodo();}; reader.readAsArrayBuffer(f);});
+function descargarCSV(){leerInputs(); let c=cols(); let csv=[c.join(';'),...rows.map(r=>c.map(k=>`"${String(r[k]??'').replace(/"/g,'""')}"`).join(';'))].join('\n'); let a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download='planificador_camiones_pallets.csv'; a.click();}
+renderInput(); renderTodo();
+</script>
+</body>
+</html>
